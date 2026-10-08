@@ -1,0 +1,119 @@
+###############################################################################
+#
+# Licensed to the Apache Software Foundation (ASF) under one 
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY 
+# KIND, either express or implied.  See the License for the 
+# specific language governing permissions and limitations
+# under the License.
+#
+###############################################################################
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      mode: non-blocking
+      max-buffer-size: 100m
+      max-size: 10m
+      max-file: 1
+
+services:
+  registration-api-metrics-prometheus:
+    image: prom/prometheus
+    container_name: registration-api-metrics-prometheus
+    volumes:
+      - ./registration-api-metrics-monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - registration-api-metrics-net
+    <<: *logging
+
+  registration-api-metrics-grafana:
+    image: grafana/grafana-oss
+    container_name: registration-api-metrics-grafana
+    env_file:
+      - registration-api-metrics.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 5s
+      retries: 100
+    networks:
+      - registration-api-metrics-net
+    volumes:
+      - ./registration-api-metrics-monitoring/grafana/datasource.yml:/etc/grafana/provisioning/datasources/grafana-datasource.yml
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_HIDE_VERSION=true
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_USERS_VIEWERS_CAN_EDIT=true
+      - GF_UNIFIED_ALERTING_ENABLED=false
+      - GF_ALERTING_ENABLED=true
+      - GF_USERS_DEFAULT_THEME=dark
+      - GF_DISABLE_SIGNOUT_MENU=true
+      - GF_SERVER_ROOT_URL=${REGISTRATION_API_METRICS_API_URL}/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    <<: *logging
+
+  registration-api-metrics-broker:
+    container_name: registration-api-metrics-broker
+    restart: always
+    build:
+      context: ./registration-api-metrics-broker/
+    env_file:
+      - registration-api-metrics.env
+    networks:
+      - registration-api-metrics-net
+    <<: *logging
+
+  registration-api-metrics-metrics-collector:
+    container_name: registration-api-metrics-metrics-collector
+    restart: unless-stopped
+    build:
+      context: ./registration-api-metrics-monitoring/metrics-collector/
+    env_file:
+      - registration-api-metrics.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006"]
+      interval: 5s
+      retries: 3
+    networks:
+      - registration-api-metrics-net
+    depends_on:
+      - registration-api-metrics-broker
+    <<: *logging
+
+  registration-api-metrics-management:
+    container_name: registration-api-metrics-management
+    build:
+      context: ./registration-api-metrics-management/
+    env_file:
+      - registration-api-metrics.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://registration-api-metrics-metrics-collector:8006"]
+      interval: 5s
+      retries: 3
+    volumes:
+      - registration-api-metrics-management-data:/data
+    restart: always
+    networks:
+      - registration-api-metrics-net
+    <<: *logging
+
+volumes:
+  registration-api-metrics-management-data:
+
+networks:
+  registration-api-metrics-net:
