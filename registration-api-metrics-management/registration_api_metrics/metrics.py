@@ -59,7 +59,7 @@ class MetricsAnalyzer:
         :returns: `None`
         """
 
-        self._analyze_proceses_total()
+        self._analyze_processes_total()
         self._analyze_jobs_total()
 
     def _analyze_processes_total(self) -> None:
