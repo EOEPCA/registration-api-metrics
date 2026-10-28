@@ -50,6 +50,7 @@ services:
     networks:
       - registration-api-metrics-net
     volumes:
+      - registration-api-metrics-grafana-data:/var/lib/grafana
       - ./registration-api-metrics-monitoring/grafana/datasource.yml:/etc/grafana/provisioning/datasources/grafana-datasource.yml
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
@@ -114,6 +115,7 @@ services:
 
 volumes:
   registration-api-metrics-management-data:
+  registration-api-metrics-grafana-data:
 
 networks:
   registration-api-metrics-net:
