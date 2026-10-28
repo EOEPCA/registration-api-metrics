@@ -1,1 +1,1 @@
-*/5 * * * * /venv/bin/registration-api-metrics metrics analyze --url $REGISTRATION_API_METRICS_API_URL
+*/5 * * * * /venv/bin/registration-api-metrics analyze --url $REGISTRATION_API_METRICS_API_URL
